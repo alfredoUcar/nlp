@@ -22,19 +22,22 @@ _status_classified_packages = None #cache
 
 def download_pending_packages(use_cache=True):
     pending_packages = get_pending_packages(use_cache)
-    return download(pending_packages)
+    total_downloads = len(pending_packages)
+    successfull_downloads = download(pending_packages)
+    return (total_downloads - successfull_downloads)
 
 def download(packages=[]):
     successfull_downloads = 0
-    download_dir = get_nltk_data_path()
-    for package in pending_packages:
-        if _downloader.download(info_or_id=package,
-            download_dir=download_dir, quiet=True):
-            download += 1
+    for package in packages:
+        if _downloader.download(info_or_id=package, quiet=True):
+            successfull_downloads += 1
     return successfull_downloads
 
 def get_pending_packages(use_cache=True):
     return get_data_packages_by_status(use_cache)['pending']
+
+def require_updates():
+    return (len(get_pending_packages()) > 0)
 
 def get_installed_packages(use_cache=True):
     return get_data_packages_by_status(use_cache)['installed']
@@ -99,6 +102,11 @@ def _show_installed():
     elif installed_count > 0:
         print "Installed packages: " + ",".join(installed_packages)
 
+def _show_required():
+    packages = _data_config.get_all_packages()
+    print "Required packages: " + ", ".join(packages)
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__,
@@ -107,6 +115,10 @@ if __name__ == "__main__":
                         help="Show current state of data packages")
     parser.add_argument("-i", "--installed", action='store_true',
                         help="Show current installed packages")
+    parser.add_argument("-r", "--required", action='store_true',
+                        help="Show project required packages")
+    parser.add_argument("-u", "--update", action='store_true',
+                        help="Update data packages")
 
     if not len(sys.argv) > 1:
         parser.print_help()
@@ -117,3 +129,12 @@ if __name__ == "__main__":
 
         if args.installed:
             _show_installed()
+
+        if args.required:
+            _show_required()
+
+        if args.update:
+            errors = download_pending_packages()
+            if errors > 0:
+                print "There was errors during downloading"
+            _show_state()
